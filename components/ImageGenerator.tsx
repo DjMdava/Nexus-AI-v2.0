@@ -1,9 +1,16 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { generateImage } from '../services/geminiService';
 import Spinner from './Spinner';
 import { Icon } from './Icon';
 
 type AspectRatio = '1:1' | '16:9' | '9:16';
+
+interface ImageHistoryItem {
+  id: number;
+  prompt: string;
+  url: string;
+  aspectRatio: AspectRatio;
+}
 
 const ImageGenerator: React.FC = () => {
   const [prompt, setPrompt] = useState<string>('');
@@ -11,6 +18,18 @@ const ImageGenerator: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [history, setHistory] = useState<ImageHistoryItem[]>([]);
+
+  useEffect(() => {
+    try {
+      const storedHistory = localStorage.getItem('imageGenerationHistory');
+      if (storedHistory) {
+        setHistory(JSON.parse(storedHistory));
+      }
+    } catch (error) {
+      console.error("Failed to load image history from localStorage", error);
+    }
+  }, []);
 
   const handleGenerate = useCallback(async () => {
     if (!prompt) {
@@ -23,12 +42,38 @@ const ImageGenerator: React.FC = () => {
     try {
       const url = await generateImage(prompt, aspectRatio);
       setImageUrl(url);
+
+      const newHistoryItem: ImageHistoryItem = {
+        id: Date.now(),
+        prompt,
+        url,
+        aspectRatio,
+      };
+      const updatedHistory = [newHistoryItem, ...history].slice(0, 20); // Keep last 20 images
+      setHistory(updatedHistory);
+      localStorage.setItem('imageGenerationHistory', JSON.stringify(updatedHistory));
+
     } catch (e: any) {
       setError(e.message || 'Failed to generate image. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [prompt, aspectRatio]);
+  }, [prompt, aspectRatio, history]);
+
+  const handleSelectFromHistory = (item: ImageHistoryItem) => {
+    setPrompt(item.prompt);
+    setAspectRatio(item.aspectRatio);
+    setImageUrl(item.url);
+    setError(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleClearHistory = () => {
+    if (window.confirm('Are you sure you want to clear the entire image history? This action cannot be undone.')) {
+      setHistory([]);
+      localStorage.removeItem('imageGenerationHistory');
+    }
+  };
 
   const AspectRatioButton: React.FC<{ value: AspectRatio; label: string }> = ({ value, label }) => (
     <button
@@ -96,6 +141,40 @@ const ImageGenerator: React.FC = () => {
           </div>
         )}
       </div>
+
+      {history.length > 0 && (
+        <div className="mt-8 pt-6 border-t border-slate-700">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold text-slate-200">History</h3>
+            <button
+              onClick={handleClearHistory}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md bg-red-900/50 text-red-300 hover:bg-red-900/80 transition-colors"
+              title="Clear all history"
+            >
+              <Icon name="trash" className="w-4 h-4" />
+              <span>Clear History</span>
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {history.map((item) => (
+              <div
+                key={item.id}
+                className="relative aspect-square group cursor-pointer"
+                onClick={() => handleSelectFromHistory(item)}
+              >
+                <img
+                  src={item.url}
+                  alt={item.prompt}
+                  className="w-full h-full object-cover rounded-lg shadow-md transition-transform duration-200 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-end p-2">
+                  <p className="text-xs text-white truncate" title={item.prompt}>{item.prompt}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

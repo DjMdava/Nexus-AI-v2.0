@@ -10,7 +10,7 @@ interface HeaderProps {
 
 const NavButton: React.FC<{
   label: string;
-  icon: 'image' | 'video' | 'chat';
+  icon: 'image' | 'video' | 'chat' | 'edit-image';
   isActive: boolean;
   onClick: () => void;
 }> = ({ label, icon, isActive, onClick }) => (
@@ -37,7 +37,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
         <p className="text-slate-400 mt-2">Your Integrated AI Creation Suite</p>
       </div>
       <nav className="flex justify-center bg-slate-800/50 p-2 rounded-xl backdrop-blur-sm border border-slate-700">
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap justify-center gap-2">
           <NavButton
             label="Image Generator"
             icon="image"
@@ -55,6 +55,12 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
             icon="chat"
             isActive={activeTab === Tab.Chat}
             onClick={() => setActiveTab(Tab.Chat)}
+          />
+          <NavButton
+            label="Image Editor"
+            icon="edit-image"
+            isActive={activeTab === Tab.ImageEditor}
+            onClick={() => setActiveTab(Tab.ImageEditor)}
           />
         </div>
       </nav>

@@ -5,6 +5,7 @@ import Header from './components/Header';
 import ImageGenerator from './components/ImageGenerator';
 import VideoCreator from './components/VideoCreator';
 import Chatbot from './components/Chatbot';
+import ImageEditor from './components/ImageEditor';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.Image);
@@ -17,6 +18,8 @@ const App: React.FC = () => {
         return <VideoCreator />;
       case Tab.Chat:
         return <Chatbot />;
+      case Tab.ImageEditor:
+        return <ImageEditor />;
       default:
         return <ImageGenerator />;
     }

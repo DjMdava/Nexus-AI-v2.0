@@ -2,6 +2,7 @@ export enum Tab {
   Image,
   Video,
   Chat,
+  ImageEditor,
 }
 
 export interface MessagePart {

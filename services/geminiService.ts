@@ -1,4 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
+
+import { GoogleGenAI, Modality } from "@google/genai";
 
 if (!process.env.API_KEY) {
   throw new Error("API_KEY environment variable not set");
@@ -7,6 +8,11 @@ if (!process.env.API_KEY) {
 export const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 type AspectRatio = '1:1' | '16:9' | '9:16';
+
+export interface EditedImageResponse {
+    imageUrl: string | null;
+    text: string | null;
+}
 
 export const generateImage = async (prompt: string, aspectRatio: AspectRatio): Promise<string> => {
   try {
@@ -30,6 +36,58 @@ export const generateImage = async (prompt: string, aspectRatio: AspectRatio): P
     console.error("Error generating image:", error);
     throw new Error("Failed to communicate with the image generation service.");
   }
+};
+
+export const editImage = async (prompt: string, image: { data: string; mimeType: string }): Promise<EditedImageResponse> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image-preview',
+            contents: {
+                parts: [
+                    {
+                        inlineData: {
+                            data: image.data,
+                            mimeType: image.mimeType,
+                        },
+                    },
+                    { text: prompt },
+                ],
+            },
+            config: {
+                responseModalities: [Modality.IMAGE, Modality.TEXT],
+            },
+        });
+
+        let imageUrl: string | null = null;
+        let text: string | null = null;
+
+        if (response.candidates && response.candidates.length > 0) {
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData && !imageUrl) { // Take the first image found
+                    const base64ImageBytes: string = part.inlineData.data;
+                    const mimeType: string = part.inlineData.mimeType;
+                    imageUrl = `data:${mimeType};base64,${base64ImageBytes}`;
+                } else if (part.text) {
+                    text = (text ? text + '\n' : '') + part.text;
+                }
+            }
+        }
+
+        if (!imageUrl) {
+            if (text) {
+                throw new Error(`The model responded with text but no image: "${text}"`);
+            }
+            throw new Error("No image was returned from the editing service.");
+        }
+
+        return { imageUrl, text };
+    } catch (error) {
+        console.error("Error editing image:", error);
+        if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error("Failed to communicate with the image editing service.");
+    }
 };
 
 export const generateVideo = async (prompt: string, onProgress: () => void): Promise<string> => {
